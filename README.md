@@ -3,4 +3,4 @@ A twitter crawler bot made to make a map of users with less then 1000 friends an
 <br>
 Database: PostgreSQL
 <br>
-Special thanks to learnosint.wpengine.com
+Special thanks to automatingosint.com 
