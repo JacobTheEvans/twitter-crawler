@@ -5,6 +5,9 @@ import requests
 import time
 import database
 
+MAX_FRIENDS  = 1000
+MAX_FOLLOWERS = 1000
+
 from requests_oauthlib import OAuth1
 
 with open("./config.json","r") as content_file:
@@ -185,11 +188,11 @@ def check(user,degree):
         procces_data(user["id"],user["screen_name"],friends,followers)
     else:
         for f in friends:
-            if int(f["friends_count"]) <= 1000 and int(f["followers_count"]) <= 1000:
+            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
                 check(f,degree-1)
 
         for f in followers:
-            if int(f["friends_count"]) <= 1000 and int(f["followers_count"]) <= 1000:
+            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
                 check(f,degree-1)
 
 def is_numeric(value):
@@ -235,11 +238,11 @@ def main():
         procces_data(starting_node["id"],starting_node["screen_name"],init_friends,init_followers)
 
         for f in init_friends:
-            if int(f["friends_count"]) <= 1000 and int(f["followers_count"]) <= 1000:
+            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
                 check(f,degree)
 
         for f in init_followers:
-            if int(f["friends_count"]) <= 1000 and int(f["followers_count"]) <= 1000:
+            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
                 check(f,degree)
 
 if __name__ == "__main__":
