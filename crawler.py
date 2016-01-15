@@ -19,7 +19,7 @@ token_secret = config["token_secret"]
 #setup authentication
 oauth = OAuth1(client_key,client_secret,token,token_secret)
 
-#Twitter Request
+#Twitter Base Request
 def send_request(screen_name,rel_type,next_cursor=None):
     url = "https://api.twitter.com/1.1/%s/ids.json?screen_name=%s&count=5000" % (rel_type,screen_name)
 
@@ -58,13 +58,13 @@ def get_user_friend_list(screen_name):
     friend_list = []
     next_cursor = None
 
-    #Init Request
+    #init Request
     friends = send_request(screen_name,"friends")
 
-    #If data is returned start collection loop
+    #if data is returned start collection loop
     if friends is not None:
         friend_list.extend(friends["ids"])
-        print "[*] Download %d friends" % len(friend_list)
+        print "[*] Downloaded %d friends" % len(friend_list)
 
         #while we have a valid cursor value download friends
         while friends["next_cursor"] != 0 and friends["next_cursor"] != -1:
@@ -72,7 +72,7 @@ def get_user_friend_list(screen_name):
 
             if friends is not None:
                 friend_list.extend(friends["ids"])
-                print "[*] Download %d friends" % len(friend_list)
+                print "[*] Downloaded %d friends" % len(friend_list)
             else:
                 break
 
@@ -83,13 +83,13 @@ def get_user_follower_list(screen_name):
     follower_list = []
     next_cursor = None
 
-    #Init Request
+    #init Request
     followers = send_request(screen_name,"followers")
 
-    #If data is returned start collection loop
+    #if data is returned start collection loop
     if followers is not None:
         follower_list.extend(followers["ids"])
-        print "[*] Download %d followers" % len(follower_list)
+        print "[*] Downloaded %d followers" % len(follower_list)
 
         #while we have a valid cursor value download followers
         while followers["next_cursor"] != 0 and followers["next_cursor"] != -1:
@@ -97,17 +97,26 @@ def get_user_follower_list(screen_name):
 
             if followers is not None:
                 follower_list.extend(followers["ids"])
-                print "[*] Download %d followers" % len(follower_list)
+                print "[*] Downloaded %d followers" % len(follower_list)
             else:
                 break
 
         return follower_list
 
 def get_user_info_from_id(user_id):
-    print "[+] Getting User Info"
+    print "[+] Getting User Info For ID: %s" % user_id
     url = "https://api.twitter.com/1.1/users/lookup.json?user_id=%s" % user_id
-    response = requests.get(url, auth=oauth)
-    if response.status_code == 200:
+    failed = False
+    try:
+        response = requests.get(url, auth=oauth)
+    except requests.exceptions.ConnectionError:
+        print "[-] Connection Limit Reached Waiting 15 Minutes"
+        response = type('response', (object,), {})()
+        response.status = 403
+        time.sleep(900)
+        failed = True
+
+    if not failed or response.status_code == 200:
         return json.loads(response.content)
     else:
         print "[-] Connection Failed Waiting 15 Minutes"
@@ -119,19 +128,69 @@ def get_user_info_from_id(user_id):
             print "[-] Check Network Connection or Authorization Tokens"
             return None
 
-
-def save_data(data):
-    f = open("Twitter_Crawler_" + time.strftime("%d-%m-%Y") + ".json","w")
-    f.write(data)
-    f.close()
+def get_user_info_from_screen_name(screen_name):
+    url = "https://api.twitter.com/1.1/users/lookup.json?screen_name=%s" % screen_name
+    response = requests.get(url, auth=oauth)
+    if response.status_code == 200:
+        return json.loads(response.content)
+    else:
+        print "[-] Connection Failed Waiting 15 Minutes"
+        time.sleep(900)
+        response = requests.get(url, auth=oauth)
+        if response.status_code == 200:
+            return json.loads(response.content)
+        else:
+            print "[-] Error Connection"
+            return None
 
 def process_ids(ids):
     result = []
     for item in ids:
         temp = get_user_info_from_id(item)
         time.sleep(4)
-        result.extend([temp[0]["screen_name"]])
+        try:
+            result.extend([temp[0]])
+        except:
+            print "[-] Error with return value"
+            print "[-] JSON OBJECT"
+            print json.dumps(temp)
     return result
+
+def procces_data(user_id,user_name,friends,followers):
+    #Check if user exists
+    if len(database.get_user_from_screen_name(user_name)) == 0:
+        database.add_user(user_id,user_name,True)
+
+        database.make_new_friend_table(user_name)
+
+        for f in friends:
+            database.add_friend(user_name,f["id"],f["screen_name"])
+            database.make_new_follower_table(user_name)
+
+        for f in followers:
+            database.add_follower(user_name,f["id"],f["screen_name"])
+        print "[+] %s Data Has Been Added" % user_name
+    else:
+        print "[*] User Already Exists Ignoring"
+
+#Main recursive function
+def check(user,degree):
+    friend_request = get_user_friend_list(user["screen_name"])
+    follower_request = get_user_follower_list(user["screen_name"])
+
+    friends = process_ids(friend_request)
+    followers = process_ids(follower_request)
+
+    if degree <= 0:
+        procces_data(user["id"],user["screen_name"],friends,followers)
+    else:
+        for f in friends:
+            if int(f["friends_count"]) <= 1000 and int(f["followers_count"]) <= 1000:
+                check(f,degree-1)
+
+        for f in followers:
+            if int(f["friends_count"]) <= 1000 and int(f["followers_count"]) <= 1000:
+                check(f,degree-1)
 
 def is_numeric(value):
     try:
@@ -139,21 +198,6 @@ def is_numeric(value):
         return True
     except:
         return False
-
-def check_user(degree,data,endpoint):
-    print "[+] Called Degree %d" % degree
-    if degree <= 0:
-        return data
-    else:
-        for user in data:
-            name = get_user_info_from_id(user)[0]["screen_name"]
-            if name not in endpoint:
-                print "Screen_name: " + name
-                temp = check_user(degree -1,get_user_friend_list(name),endpoint)
-                if temp is not None:
-                    endpoint[name] = temp
-                else:
-                    endpoint[name] = []
 
 def main():
     print "[+] Starting Twitter Crawler Bot"
@@ -173,19 +217,30 @@ def main():
         print "[*] Please Input Starting Node Screen Name"
         user_input = raw_input(">> ")
 
-    init_list = get_user_friend_list(user_input)
-    network_list = {}
-    network_list[user_input] = init_list
-    try:
-        check_user(degree,init_list,network_list)
-    except KeyboardInterrupt:
-        print "[-] Program Interrupted Dumping Data"
+    if len(database.get_user_from_screen_name(user_input)) != 0:
+        print "[-] User already axists"
+        print "[+] Please Input Valid Starting Node"
+        main()
 
-    for user in network_list:
-        network_list[user] = process_ids(network_list[user])
+    else:
+        init_friend_request = get_user_friend_list(user_input)
+        init_follower_request = get_user_follower_list(user_input)
 
-    save_data(json.dumps(network_list))
-    print "[+] Data Saved"
+        starting_node = get_user_info_from_screen_name(user_input)[0]
+
+        init_friends = process_ids(init_friend_request)
+        init_followers = process_ids(init_follower_request)
+
+        #Add user data to database
+        procces_data(starting_node["id"],starting_node["screen_name"],init_friends,init_followers)
+
+        for f in init_friends:
+            if int(f["friends_count"]) <= 1000 and int(f["followers_count"]) <= 1000:
+                check(f,degree)
+
+        for f in init_followers:
+            if int(f["friends_count"]) <= 1000 and int(f["followers_count"]) <= 1000:
+                check(f,degree)
 
 if __name__ == "__main__":
     main()

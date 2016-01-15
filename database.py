@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData ,text
+from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData ,text, BigInteger, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -10,17 +10,18 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__  = "users"
-    id = Column(Integer, primary_key=True)
-    degree = Column(Integer, nullable=False)
+    id = Column(BigInteger, primary_key=True)
     screen_name = Column(String(1000), nullable=False)
+    processed = Column(Boolean,nullable=False)
 
 #User query functions
-def add_user(id,name):
-    new_user = User(id=id,screen_name=name)
+def add_user(id,name,processed):
+    new_user = User(id=id,screen_name=name,processed=processed)
 
     session.add(new_user)
+    session.commit()
     try:
-        session.commit()
+        pass
     except:
         session.rollback()
         print "Error"
@@ -46,7 +47,7 @@ Base.metadata.create_all(engine)
 def make_new_friend_table(screen_name):
     metadata = MetaData(bind=engine)
     user_table = Table(
-    screen_name,
+    screen_name + "_friends",
     metadata,
     Column("id", String(100), primary_key=True),
     Column("screen_name", String(100), nullable=False)
@@ -54,7 +55,7 @@ def make_new_friend_table(screen_name):
     metadata.create_all()
 
 def get_friends(screen_name):
-    statement = text("select * from %s" % screen_name)
+    statement = text("select * from %s" % screen_name + "_friends")
     result = engine.execute(statement)
     data = []
     for row in result:
@@ -62,5 +63,28 @@ def get_friends(screen_name):
     return data
 
 def add_friend(table,id,screen_name):
-    statement = text("insert into %s VALUES ('%s','%s')" % (table,id,screen_name))
+    statement = text("insert into %s VALUES ('%s','%s')" % (table + "_friends",id,screen_name))
+    result = engine.execute(statement)
+
+#Follower functions
+def make_new_follower_table(screen_name):
+    metadata = MetaData(bind=engine)
+    user_table = Table(
+    screen_name + "_followers",
+    metadata,
+    Column("id", String(100), primary_key=True),
+    Column("screen_name", String(100), nullable=False)
+    )
+    metadata.create_all()
+
+def get_followers(screen_name):
+    statement = text("select * from %s" % screen_name + "_followers")
+    result = engine.execute(statement)
+    data = []
+    for row in result:
+        data.append(row[1])
+    return data
+
+def add_follower(table,id,screen_name):
+    statement = text("insert into %s VALUES ('%s','%s')" % (table + "_followers",id,screen_name))
     result = engine.execute(statement)
