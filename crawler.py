@@ -1,17 +1,22 @@
+#!/usr/bin/python
 import json
 import sys
+import logging
 sys.dont_write_bytecode = True
 import requests
 import time
 import database
+from requests_oauthlib import OAuth1
 
 MAX_FRIENDS  = 1000
 MAX_FOLLOWERS = 1000
 
-from requests_oauthlib import OAuth1
-
-with open("./config.json","r") as content_file:
+with open("./config.json", "r") as content_file:
     config = json.loads(content_file.read())
+
+#error log
+LOG_FILENAME = config["log_location"]
+logging.basicConfig(filename=LOG_FILENAME,level=logging.ERROR,)
 
 #authentication pieces
 client_key = config["client_key"]
@@ -20,16 +25,17 @@ token = config["token"]
 token_secret = config["token_secret"]
 
 #setup authentication
-oauth = OAuth1(client_key,client_secret,token,token_secret)
+oauth = OAuth1(client_key, client_secret, token ,token_secret)
 
 #Twitter Base Request
-def send_request(screen_name,rel_type,next_cursor=None):
-    url = "https://api.twitter.com/1.1/%s/ids.json?screen_name=%s&count=5000" % (rel_type,screen_name)
+def send_request(screen_name, rel_type, next_cursor=None):
+    screen_name = screen_name.lower()
+    url = "https://api.twitter.com/1.1/%s/ids.json?screen_name=%s&count=5000" % (rel_type, screen_name)
 
     if next_cursor is not None:
         url += "&cursor=%s" % next_cursor
 
-    response = requests.get(url,auth=oauth)
+    response = requests.get(url, auth=oauth)
 
     #Wait to fix request limit
     time.sleep(4)
@@ -38,31 +44,33 @@ def send_request(screen_name,rel_type,next_cursor=None):
         result = json.loads(response.content)
         return result
     else:
+        logging.exception("[-] Connection Failed Wating 15 Minutes To Retry, Time: " + time.strftime("%c"))
         print "[-] Connection Failed Waiting 15 Minutes To Retry"
         time.sleep(900)
-        url = "https://api.twitter.com/1.1/%s/ids.json?screen_name=%s&count=5000" % (rel_type,screen_name)
+        url = "https://api.twitter.com/1.1/%s/ids.json?screen_name=%s&count=5000" % (rel_type, screen_name)
 
         if next_cursor is not None:
             url += "&cursor=%s" % next_cursor
 
-        response = requests.get(url,auth=oauth)
+        response = requests.get(url, auth=oauth)
 
         if response.status_code == 200:
             result = json.loads(response.content)
             return result
         else:
+            logging.exception("[-] Connection Failed To Reconnect After 2 Tries, Time: " + time.strftime("%c"))
             print "[-] Connection Failed"
             print "[-] Check Network Connection or Authorization Tokens"
             return None
 
 #users that the user follows
 def get_user_friend_list(screen_name):
+    screen_name = screen_name.lower()
     print "Screen Name Called: " + screen_name
     friend_list = []
-    next_cursor = None
 
     #init Request
-    friends = send_request(screen_name,"friends")
+    friends = send_request(screen_name, "friends")
 
     #if data is returned start collection loop
     if friends is not None:
@@ -71,7 +79,7 @@ def get_user_friend_list(screen_name):
 
         #while we have a valid cursor value download friends
         while friends["next_cursor"] != 0 and friends["next_cursor"] != -1:
-            friends = send_request(screen_name,"friends",friends["next_cursor"])
+            friends = send_request(screen_name, "friends", friends["next_cursor"])
 
             if friends is not None:
                 friend_list.extend(friends["ids"])
@@ -83,11 +91,11 @@ def get_user_friend_list(screen_name):
 
 #users that follow user
 def get_user_follower_list(screen_name):
+    screen_name = screen_name.lower()
     follower_list = []
-    next_cursor = None
 
     #init Request
-    followers = send_request(screen_name,"followers")
+    followers = send_request(screen_name ,"followers")
 
     #if data is returned start collection loop
     if followers is not None:
@@ -113,36 +121,42 @@ def get_user_info_from_id(user_id):
     try:
         response = requests.get(url, auth=oauth)
     except requests.exceptions.ConnectionError:
+        logging.exception("[-] Connection Limit Reached Waiting 15 Minutes, Time: " + time.strftime("%c"))
         print "[-] Connection Limit Reached Waiting 15 Minutes"
         response = type('response', (object,), {})()
         response.status = 403
         time.sleep(900)
         failed = True
 
-    if not failed or response.status_code == 200:
+    if not failed and response.status_code == 200:
         return json.loads(response.content)
     else:
         print "[-] Connection Failed Waiting 15 Minutes"
+        logging.exception("[-] Connection Failed Waiting 15 Minutes, Time: " + time.strftime("%c"))
         time.sleep(900)
         response = requests.get(url, auth=oauth)
         if response.status_code == 200:
             return json.loads(response.content)
         else:
+            logging.exception("[-] Connection Failed To Reconnect After 2 Tries, Time: " + time.strftime("%c"))
             print "[-] Check Network Connection or Authorization Tokens"
             return None
 
 def get_user_info_from_screen_name(screen_name):
+    screen_name = screen_name.lower()
     url = "https://api.twitter.com/1.1/users/lookup.json?screen_name=%s" % screen_name
     response = requests.get(url, auth=oauth)
     if response.status_code == 200:
         return json.loads(response.content)
     else:
+        logging.exception("[-] Connection Failed Waiting 15 Minutes, Time: " + time.strftime("%c"))
         print "[-] Connection Failed Waiting 15 Minutes"
         time.sleep(900)
         response = requests.get(url, auth=oauth)
         if response.status_code == 200:
             return json.loads(response.content)
         else:
+            logging.exception("[-] Connection Failed To Reconnect After 2 Tries, Time: " + time.strftime("%c"))
             print "[-] Error Connection"
             return None
 
@@ -154,30 +168,32 @@ def process_ids(ids):
         try:
             result.extend([temp[0]])
         except:
+            logging.exception("[-] Error With Return Value, Value" + json.dumps(temp) +  "Time: " + time.strftime("%c"))
             print "[-] Error with return value"
             print "[-] JSON OBJECT"
             print json.dumps(temp)
     return result
 
-def procces_data(user_id,user_name,friends,followers):
+def procces_data(user_id, user_name, friends, followers):
+    user_name = user_name.lower()
     #Check if user exists
     if len(database.get_user_from_screen_name(user_name)) == 0:
-        database.add_user(user_id,user_name,True)
+        database.add_user(user_id, user_name, True)
 
         database.make_new_friend_table(user_name)
 
         for f in friends:
-            database.add_friend(user_name,f["id"],f["screen_name"])
+            database.add_friend(user_name, f["id"], f["screen_name"])
             database.make_new_follower_table(user_name)
 
         for f in followers:
-            database.add_follower(user_name,f["id"],f["screen_name"])
+            database.add_follower(user_name,f["id"], f["screen_name"])
         print "[+] %s Data Has Been Added" % user_name
     else:
         print "[*] User Already Exists Ignoring"
 
 #Main recursive function
-def check(user,degree):
+def check(user, degree):
     friend_request = get_user_friend_list(user["screen_name"])
     follower_request = get_user_follower_list(user["screen_name"])
 
@@ -185,15 +201,15 @@ def check(user,degree):
     followers = process_ids(follower_request)
 
     if degree <= 0:
-        procces_data(user["id"],user["screen_name"],friends,followers)
+        procces_data(user["id"], user["screen_name"], friends, followers)
     else:
         for f in friends:
             if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
-                check(f,degree-1)
+                check(f, degree-1)
 
         for f in followers:
             if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
-                check(f,degree-1)
+                check(f, degree-1)
 
 def is_numeric(value):
     try:
@@ -235,7 +251,7 @@ def main():
         init_followers = process_ids(init_follower_request)
 
         #Add user data to database
-        procces_data(starting_node["id"],starting_node["screen_name"],init_friends,init_followers)
+        procces_data(starting_node["id"], starting_node["screen_name"], init_friends, init_followers)
 
         for f in init_friends:
             if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
@@ -243,7 +259,8 @@ def main():
 
         for f in init_followers:
             if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
-                check(f,degree)
+                check(f, degree)
 
 if __name__ == "__main__":
+    logging.error("[+] Program Started: " + time.strftime("%c"))
     main()
