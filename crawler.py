@@ -165,10 +165,10 @@ def procces_data(user_id, user_name, friends, followers):
         database.add_user(user_id, user_name, True)
 
         database.make_new_friend_table(user_name)
+        database.make_new_follower_table(user_name)
 
         for f in friends:
             database.add_friend(user_name, f["id"], f["screen_name"])
-            database.make_new_follower_table(user_name)
 
         for f in followers:
             database.add_follower(user_name, f["id"], f["screen_name"])
