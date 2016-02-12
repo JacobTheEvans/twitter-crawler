@@ -43,7 +43,7 @@ def send_request(screen_name, rel_type, next_cursor=None):
     while response.status_code != 200:
         fail_count += 1
         print "[-] Connection Failed Waiting 15 Minutes To Retry"
-        logging.exception("[-] Connection Failed Wating 15 Minutes To Retry, Fail Count: " + str(fail_count) + " Time: " + time.strftime("%c"))
+        logging.exception("[-] Connection Failed Wating 15 Minutes To Retry, Fail Count: " + str(fail_count) + " Reason:" + response.reason +" Time: " + time.strftime("%c"))
         time.sleep(950)
 
         url = "https://api.twitter.com/1.1/%s/ids.json?screen_name=%s&count=5000" % (rel_type, screen_name)
@@ -114,7 +114,7 @@ def get_user_info_from_id(user_id):
     try:
         response = requests.get(url, auth=oauth)
     except:
-        logging.exception("[-] Connection Limit Reached Waiting 15 Minutes, Time: " + time.strftime("%c"))
+        logging.exception("[-] Connection Limit Reached Wating 15 Minutes To Retry, Fail Count: " + str(fail_count) + " Reason:" + response.reason +" Time: " + time.strftime("%c"))
         print "[-] Connection Limit Reached Waiting 15 Minutes"
         response = type('response', (object,), {})()
         response.status_code = 403
@@ -124,7 +124,7 @@ def get_user_info_from_id(user_id):
     while response.status_code != 200:
         fail_count += 1
         print "[-] Connection Failed Waiting 15 Minutes"
-        logging.exception("[-] Connection Failed Wating 15 Minutes To Retry, Fail Count: " + str(fail_count) + " Time: " + time.strftime("%c"))
+        logging.exception("[-] Connection Failed Wating 15 Minutes To Retry, Fail Count: " + str(fail_count) + " Reason:" + response.reason +" Time: " + time.strftime("%c"))
         time.sleep(950)
         response = requests.get(url, auth=oauth)
 
@@ -137,7 +137,7 @@ def get_user_info_from_screen_name(screen_name):
 
     fail_count = 0
     while response.status_code != 200:
-        logging.exception("[-] Connection Failed Wating 15 Minutes To Retry, Fail Count: " + str(fail_count) + " Time: " + time.strftime("%c"))
+        logging.exception("[-] Connection Failed Wating 15 Minutes To Retry, Fail Count: " + str(fail_count) + " Reason:" + response.reason +" Time: " + time.strftime("%c"))
         print "[-] Connection Failed Waiting 15 Minutes"
         time.sleep(950)
         response = requests.get(url, auth=oauth)
