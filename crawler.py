@@ -45,13 +45,13 @@ def send_request(screen_name, rel_type, next_cursor=None):
     response = requests.get(url, auth=oauth)
 
     # Wait to fix request limit
-    time.sleep(5)
+    time.sleep(120)
     fail_count = 0
     while response.status_code != 200:
         fail_count += 1
         print "[-] Connection Failed Waiting 15 Minutes To Retry"
         log_error(response, fail_count, 53)
-        time.sleep(950)
+        time.sleep(1050)
 
         url = "https://api.twitter.com/1.1/%s/ids.json?screen_name=%s&count=5000" % (rel_type, screen_name)
 
@@ -123,7 +123,7 @@ def get_user_info_from_id(user_id):
     except:
         response = type('response', (object,), {})()
         response.status_code = 403
-        time.sleep(900)
+        time.sleep(1050)
         log_error(response, -1, 127)
         print "[-] Connection Limit Reached Waiting 15 Minutes"
 
@@ -133,7 +133,7 @@ def get_user_info_from_id(user_id):
         fail_count += 1
         print "[-] Connection Failed Waiting 15 Minutes"
         log_error(response, fail_count, 135)
-        time.sleep(950)
+        time.sleep(1050)
         response = requests.get(url, auth=oauth)
 
     return json.loads(response.content)
@@ -147,7 +147,7 @@ def get_user_info_from_screen_name(screen_name):
     while response.status_code != 200:
         log_error(response, fail_count, 148)
         print "[-] Connection Failed Waiting 15 Minutes"
-        time.sleep(950)
+        time.sleep(1050)
         response = requests.get(url, auth=oauth)
 
     return json.loads(response.content)
@@ -156,7 +156,7 @@ def process_ids(ids):
     result = []
     for item in ids:
         temp = get_user_info_from_id(item)
-        time.sleep(4)
+        time.sleep(60)
         try:
             result.extend([temp[0]])
         except:
@@ -197,10 +197,12 @@ def check(user, degree):
     else:
         for f in friends:
             if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
+                time.sleep(60)
                 check(f, degree-1)
 
         for f in followers:
             if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
+                time.sleep(60)
                 check(f, degree-1)
 
 def is_numeric(value):
@@ -236,6 +238,7 @@ def main():
     else:
         init_friend_request = get_user_friend_list(user_input)
         init_follower_request = get_user_follower_list(user_input)
+        time.sleep(120)
 
         starting_node = get_user_info_from_screen_name(user_input)[0]
 
