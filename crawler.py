@@ -45,7 +45,7 @@ def send_request(screen_name, rel_type, next_cursor=None):
     response = requests.get(url, auth=oauth)
 
     # Wait to fix request limit
-    time.sleep(120)
+    time.sleep(30)
     fail_count = 0
     while response.status_code != 200:
         fail_count += 1
@@ -196,12 +196,18 @@ def check(user, degree):
         procces_data(user["id"], user["screen_name"], friends, followers)
     else:
         for f in friends:
-            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
+            print("Checking user..")
+            print(f["screen_name"])
+            print(f["protected"])
+            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS and f["protected"] == False:
                 time.sleep(60)
                 check(f, degree-1)
 
         for f in followers:
-            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
+            print("Checking user..")
+            print(f["screen_name"])
+            print(f["protected"])
+            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS and f["protected"] == False:
                 time.sleep(60)
                 check(f, degree-1)
 
@@ -238,7 +244,7 @@ def main():
     else:
         init_friend_request = get_user_friend_list(user_input)
         init_follower_request = get_user_follower_list(user_input)
-        time.sleep(120)
+        time.sleep(30)
 
         starting_node = get_user_info_from_screen_name(user_input)[0]
 
@@ -249,11 +255,19 @@ def main():
         procces_data(starting_node["id"], starting_node["screen_name"], init_friends, init_followers)
 
         for f in init_friends:
-            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
-                check(f, degree)
+            print("Checking user..")
+            print(f["screen_name"])
+            print(f["protected"])
+            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS and f["protected"] == False:
+                print("Passed")
+                heck(f, degree)
 
         for f in init_followers:
-            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS:
+            print("Checking user..")
+            print(f["screen_name"])
+            print(f["protected"])
+            if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS and ["protected"] == False:
+                print("Passed")
                 check(f, degree)
 
 if __name__ == "__main__":
