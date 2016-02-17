@@ -260,7 +260,7 @@ def main():
             print(f["protected"])
             if int(f["friends_count"]) <= MAX_FRIENDS and int(f["followers_count"]) <= MAX_FOLLOWERS and f["protected"] == False:
                 print("Passed")
-                heck(f, degree)
+                check(f, degree)
 
         for f in init_followers:
             print("Checking user..")
