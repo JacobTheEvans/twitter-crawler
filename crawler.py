@@ -123,6 +123,7 @@ def get_user_info_from_id(user_id):
     except:
         response = type('response', (object,), {})()
         response.status_code = 403
+        response.reason = "Custom Error, To many requests"
         time.sleep(905)
         log_error(response, -1, 127)
         print "[-] Connection Limit Reached Waiting 15 Minutes"
