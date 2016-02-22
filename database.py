@@ -48,7 +48,7 @@ Base.metadata.create_all(engine)
 def make_new_friend_table(screen_name):
     metadata = MetaData(bind=engine)
     user_table = Table(
-    screen_name + "_friends",
+    "_" + screen_name + "_friends",
     metadata,
     Column("id", String(100), primary_key=True),
     Column("screen_name", String(100), nullable=False)
@@ -56,7 +56,7 @@ def make_new_friend_table(screen_name):
     metadata.create_all()
 
 def get_friends(screen_name):
-    statement = text("select * from %s" % screen_name + "_friends")
+    statement = text("select * from %s" % "_" + screen_name + "_friends")
     result = engine.execute(statement)
     data = []
     for row in result:
@@ -64,14 +64,14 @@ def get_friends(screen_name):
     return data
 
 def add_friend(table,id,screen_name):
-    statement = text("insert into %s VALUES ('%s','%s')" % (table + "_friends",id,screen_name))
+    statement = text("insert into %s VALUES ('%s','%s')" % ("_" + table + "_friends",id,screen_name))
     result = engine.execute(statement)
 
 #Follower functions
 def make_new_follower_table(screen_name):
     metadata = MetaData(bind=engine)
     user_table = Table(
-    screen_name + "_followers",
+    "_" + screen_name + "_followers",
     metadata,
     Column("id", String(100), primary_key=True),
     Column("screen_name", String(100), nullable=False)
@@ -79,7 +79,7 @@ def make_new_follower_table(screen_name):
     metadata.create_all()
 
 def get_followers(screen_name):
-    statement = text("select * from %s" % screen_name + "_followers")
+    statement = text("select * from %s" % "_" + screen_name + "_followers")
     result = engine.execute(statement)
     data = []
     for row in result:
@@ -87,5 +87,5 @@ def get_followers(screen_name):
     return data
 
 def add_follower(table,id,screen_name):
-    statement = text("insert into %s VALUES ('%s','%s')" % (table + "_followers",id,screen_name))
+    statement = text("insert into %s VALUES ('%s','%s')" % ("_" + table + "_followers",id,screen_name))
     result = engine.execute(statement)
