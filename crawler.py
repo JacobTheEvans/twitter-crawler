@@ -127,15 +127,18 @@ def get_user_info_from_id(user_id):
         response.headers = "No headers"
         response.text = "Custom Error, To many requests"
         time.sleep(905)
-        log_error(response, -1, 127)
+        log_error(response, -1, 130)
         print "[-] Connection Limit Reached Waiting 15 Minutes"
 
 
     fail_count = 0
     while response.status_code != 200:
+        if response.status_code == 404:
+            print "User does not exist"
+            return -1
         fail_count += 1
         print "[-] Connection Failed Waiting 15 Minutes"
-        log_error(response, fail_count, 135)
+        log_error(response, fail_count, 141)
         time.sleep(905)
         response = requests.get(url, auth=oauth)
 
@@ -148,7 +151,7 @@ def get_user_info_from_screen_name(screen_name):
 
     fail_count = 0
     while response.status_code != 200:
-        log_error(response, fail_count, 148)
+        log_error(response, fail_count, 154)
         print "[-] Connection Failed Waiting 15 Minutes"
         time.sleep(905)
         response = requests.get(url, auth=oauth)
@@ -160,13 +163,14 @@ def process_ids(ids):
     for item in ids:
         temp = get_user_info_from_id(item)
         time.sleep(10)
-        try:
-            result.extend([temp[0]])
-        except:
-            logging.exception("[-] Error With Return Value, Value" + json.dumps(temp) + "Time: " + time.strftime("%c"))
-            print "[-] Error with return value"
-            print "[-] JSON OBJECT"
-            print json.dumps(temp)
+        if temp != -1:
+            try:
+                result.extend([temp[0]])
+            except:
+                logging.exception("[-] Error With Return Value, Value" + json.dumps(temp) + "Time: " + time.strftime("%c"))
+                print "[-] Error with return value"
+                print "[-] JSON OBJECT"
+                print json.dumps(temp)
     return result
 
 def procces_data(user_id, user_name, friends, followers):
